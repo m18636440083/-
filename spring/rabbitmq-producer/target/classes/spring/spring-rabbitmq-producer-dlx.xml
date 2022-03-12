@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/rabbit
+       http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+    <!--    配置连接-->
+    <rabbit:connection-factory
+            id="connectionFactory"
+            host="192.168.184.128"
+            port="5672"
+            username="yandong"
+            password="123456"
+            virtual-host="/yandong"
+    />
+    <!--    配置rabbitAdmin:主要用于在java代码中对队列的管理，用来创建，绑定，删除队列与交 换机，发送消息等-->
+    <rabbit:admin connection-factory="connectionFactory"/>
+    <!--    配置rabbitmq模板-->
+    <rabbit:template
+            id="rabbitTemplate"
+            connection-factory="connectionFactory"
+            exchange="my_exchange"
+    />
+
+    <!--    #############################################################################################-->
+
+    <!--    死信队列-->
+    <rabbit:queue name="dlx_queue"/>
+    <!--    定向死信交换机-->
+    <rabbit:direct-exchange name="dlx_exchange">
+        <rabbit:bindings>
+            <rabbit:binding key="dlx_ttl" queue="dlx_queue"/>
+            <rabbit:binding key="dlx_max" queue="dlx_queue"/>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+
+    <!--    测试超时的队列-->
+    <rabbit:queue name="test_ttl_queue">
+        <rabbit:queue-arguments>
+            <!--队列ttl为6秒-->
+            <entry key="x-message-ttl" value-type="long" value="15000"/>
+            <!--超时 消息 投递给 死信交换机-->
+            <entry key="x-dead-letter-exchange" value="dlx_exchange"/>
+        </rabbit:queue-arguments>
+    </rabbit:queue>
+
+    <!--  测试超长度的队列-->
+    <rabbit:queue name="test_max_queue">
+        <rabbit:queue-arguments> <!--队列ttl为6秒-->
+            <entry key="x-max-length" value-type="long" value="2"/> <!--超时 消息 投递给 死信交换机-->
+            <entry key="x-dead-letter-exchange" value="dlx_exchange"/>
+        </rabbit:queue-arguments>
+    </rabbit:queue>
+
+    <!--定向测试交换机-->
+    <rabbit:direct-exchange name="my_exchange">
+        <rabbit:bindings>
+            <rabbit:binding key="dlx_ttl" queue="test_ttl_queue"></rabbit:binding>
+            <rabbit:binding key="dlx_max" queue="test_max_queue"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+
+</beans>
